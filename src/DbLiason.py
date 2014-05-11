@@ -62,11 +62,11 @@ def produceAndParse(func, dataIn):
     if hasattr(dbCheck, 'reason'):
         return dbCheck
     else:
-        response = dbCheck.get('value', None)
-        if response:
+        value = dbCheck.get('value', None)
+        if value:
             try:
                 return dict(
-                    response=json.loads(response.decode()), code=dbCheck.get('code', 400)
+                    response=json.loads(value.decode()), code=dbCheck.get('code', 400)
                 )
             except Exception as e:
                 return dict(reason=e, code=500)
@@ -86,12 +86,13 @@ class ChatHandler(object):
     def receipientHandler(self): return self.__receipientHandler
 
 def main():
-    chatH = ChatHandler('http://127.0.0.1:8000/chatServer') 
+    chatH = ChatHandler('http://192.168.1.106:8000/chatServer') 
     messageHandler  = chatH.messageHandler
     receipientHandler = chatH.receipientHandler
 
-    print(messageHandler.getConn(dict()))
-    print(messageHandler.deleteConn(dict()))
+    print(receipientHandler.getConn(dict()))
+    # print(receipientHandler.deleteConn(dict()))
+    # print(messageHandler.deleteConn(dict()))
             
 if __name__ == '__main__':
   main()

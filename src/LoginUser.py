@@ -15,9 +15,11 @@ except:
     from DbLiason import  ChatHandler, produceAndParse
 
 class LoginUI:
-    def __init__(self, dbHandler):
+    def __init__(self, dbHandler, onSubmitCallback=None):
+        self.__onSubmitCallback = onSubmitCallback
         self.initDBHandler(dbHandler)
         self.initUI()
+
 
     def initDBHandler(self, dbHandler, elemParent=None):
         self.__dbHandler = dbHandler
@@ -45,19 +47,29 @@ class LoginUI:
         if content:
             username = content.get('Username', {}).get('entryText', None)
             password = content.get('Password', {}).get('entryText', '')
+            print('username', username, 'password', password)
             if not (username and password):
                 print('\033[91mBoth username and password have to be non-NULL!\033[00m')
             else:
                 encryptedPass = sha256(bytes(password, encoding='utf-8')).hexdigest()
+
+                queryDict = dict(name=username, token=encryptedPass)
                 userQuery = produceAndParse(
-                    self.__dbHandler.receipientHandler.getConn, dict(name=username, token=encryptedPass)
+                    self.__dbHandler.receipientHandler.getConn, queryDict
                 )
                 data = userQuery.get('response', {}).get('data', None)
                 statusCode = userQuery.get('code', 404)
-                if not data:
-                    print('No such user exists', username)
+
+                if statusCode != 200:
+                    print('Error here', statusCode, userQuery)
                 else:
-                    print('User', username, 'Login successful')
+                    if not data:
+                        print('No such user exists', username)
+                    else:
+                        print('User', username, 'Login successful')
+                        if hasattr(self.__onSubmitCallback, '__call__'):
+                            self.__onSubmitCallback(queryDict, self.__tag)
+                
 
 def main():
     app = QtWidgets.QApplication(sys.argv)

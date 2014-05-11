@@ -13,14 +13,13 @@ except:
     from DbLiason import  ChatHandler, produceAndParse
 
 class UserUI:
-    def __init__(self, dbHandler, elemParent=None):
+    def __init__(self, dbHandler, elemParent=None, onSubmitCallback=None):
         self.__dbHandler = dbHandler
         self.__elemParent = elemParent
+        self.__onSubmitCallback = onSubmitCallback
 
-        self.initDBHandler(dbHandler)
         self.initUI()
         self.initFileDialog()
-
 
     def initFileDialog(self):
         self.fileDialog = QtWidgets.QFileDialog(caption='Add profile picture')
@@ -43,8 +42,9 @@ class UserUI:
                     entryText=None, regexStr='^([\w\d]{3,})$')
                 ),
                 utils.DynaItem(dict(
-                    title='Password', isMultiLine=False,  isEditable=True, entryLocation=(3, 1,), labelLocation=(3, 0,),
-                    entryText=None, regexStr='.{3,}', inputEchoMode=QtWidgets.QLineEdit.Password)
+                    title='Password', isMultiLine=False,  isEditable=True,
+                    entryLocation=(3, 1,), labelLocation=(3, 0,), entryText=None, 
+                    regexStr='.{3,}', inputEchoMode=QtWidgets.QLineEdit.Password)
                 )
             ]
         )
@@ -55,25 +55,29 @@ class UserUI:
             username = content.get('Username', {}).get('entryText', None)
 
             userQuery = produceAndParse(self.__dbHandler.receipientHandler.getConn, dict(name=username))
-            data = userQuery.get('response', {}).('data', None)
-            if not data:
+            data = userQuery.get('response', {}).get('data', None)
+            if userQuery.get('code', 400) != 200:
+                print('\033[91m', userQuery, '\033[00m')
+            elif not data:
                 alias = content.get('Alias', {}).get('entryText', None)
                 password = content.get('Password', {}).get('entryText', '')
                 encryptedPass = sha256(bytes(password, encoding='utf-8')).hexdigest()
                 print('in here', password, encryptedPass)
-                createResponse = produceAndParse(self.__dbHandler.receipientHandler.postConn, dict(
-                    name=username, token=encryptedPass, alias=alias
-                ))
-                print('createResponse', createResponse)
-
-                # Perform the redirect
-                self.__tag.close()
-                
+                creationVars = dict(name=username, token=encryptedPass, alias=alias)
+                cResp = produceAndParse(
+                    self.__dbHandler.receipientHandler.postConn, creationVars
+                )
+                print('createdResponse', cResp)
+                code = cResp.get('code', 400)
+                data = cResp.get('response', {}).get('data', None)
+                if code == 200 and data:
+                    # Perform the redirect
+                    self.__onSubmitCallback(creationVars, self.__tag)
+                else:
+                    print('err\033[91m', code, cResp, '\033[00m') 
                 
             else:
                 print('User', username, 'already exists')
-                delResponse = produceAndParse(self.__dbHandler.receipientHandler.deleteConn, dict(name=username))
-                print('DelResponse', delResponse)
 
 def main():
     app = QtWidgets.QApplication(sys.argv)
