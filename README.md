@@ -1,4 +1,4 @@
-
+An experiment with messaging and chatting.
 
 Usage:
 ===========
